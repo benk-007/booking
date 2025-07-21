@@ -4,6 +4,15 @@
  */
 package com.smsmode.booking.controller;
 
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * TODO: add your documentation
  *
@@ -11,5 +20,12 @@ package com.smsmode.booking.controller;
  * <p>Created 07 Jul 2025</p>
  */
 
+@RequestMapping("/bookings")
 public interface BookingController {
+
+    @GetMapping("/reserved-units")
+    ResponseEntity<List<String>> getReservedUnits(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate);
+
 }
