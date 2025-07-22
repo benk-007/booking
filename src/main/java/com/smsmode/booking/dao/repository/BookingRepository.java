@@ -29,6 +29,18 @@ public interface BookingRepository extends JpaRepository<BookingModel, String>, 
                                                 @Param("checkoutDate") LocalDate checkoutDate);
 
     @Query("""
+                SELECT DISTINCT b.unit.unitId
+                FROM BookingModel b
+                WHERE b.checkinDate < :checkoutDate
+                  AND b.checkoutDate > :checkinDate
+                  AND b.status = 'CONFIRMED'
+                  AND b.type = 'SINGLE'
+            """)
+    List<String> findStrictlyOverlappingConfirmedSingleUnitIds(@Param("checkinDate") LocalDate checkinDate,
+                                                               @Param("checkoutDate") LocalDate checkoutDate);
+
+
+    @Query("""
                 SELECT DISTINCT b.unit.unitId 
                 FROM BookingModel b 
                 WHERE b.checkinDate <= :checkoutDate 
