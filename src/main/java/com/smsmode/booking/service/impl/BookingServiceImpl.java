@@ -1,7 +1,6 @@
 package com.smsmode.booking.service.impl;
 
 import com.smsmode.booking.dao.service.BookingDaoService;
-import com.smsmode.booking.model.BookingModel;
 import com.smsmode.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +17,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingDaoService bookingDaoService;
 
     @Override
-    public ResponseEntity<List<String>> getReservedUnits(LocalDate startDate, LocalDate endDate) {
-        List<String> reservedUnitIds = bookingDaoService.findAllByDateOverlap(startDate, endDate);
-        return ResponseEntity.ok(reservedUnitIds);
+    public ResponseEntity<List<String>> retrieveBookedUnitIds(LocalDate checkinDate, LocalDate checkoutDate, boolean strict) {
+        return ResponseEntity.ok(bookingDaoService.findBookedUnitIds(checkinDate, checkoutDate, strict));
     }
 }

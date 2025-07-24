@@ -16,9 +16,13 @@ import java.util.List;
 public class BookingDaoServiceImpl implements BookingDaoService {
     private final BookingRepository bookingRepository;
 
+
     @Override
-    public List<String> findAllByDateOverlap(LocalDate startDate, LocalDate endDate) {
-        log.debug("Fetching reserved unitIds overlapping between {} and {}", startDate, endDate);
-        return bookingRepository.findStrictlyOverlappingConfirmedSingleUnitIds(startDate, endDate);
+    public List<String> findBookedUnitIds(LocalDate checkinDate, LocalDate checkoutDate, boolean strict) {
+        if(strict){
+            return bookingRepository.findStrictlyBookedUnitIds(checkinDate, checkoutDate);
+        }else{
+            return bookingRepository.findLooselyBookedUnitIds(checkinDate, checkoutDate);
+        }
     }
 }

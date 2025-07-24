@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface BookingService {
 
-    ResponseEntity<List<String>> getReservedUnits(LocalDate startDate, LocalDate endDate);
+    ResponseEntity<List<String>> retrieveBookedUnitIds(LocalDate checkinDate, LocalDate checkoutDate, boolean strict);
+
 }

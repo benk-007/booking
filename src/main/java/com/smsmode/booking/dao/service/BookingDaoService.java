@@ -4,5 +4,5 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface BookingDaoService {
-    List<String> findAllByDateOverlap(LocalDate startDate, LocalDate endDate);
+    List<String> findBookedUnitIds(LocalDate checkinDate, LocalDate checkoutDate, boolean strict);
 }
