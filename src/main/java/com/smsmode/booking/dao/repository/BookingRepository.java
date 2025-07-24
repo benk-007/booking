@@ -29,7 +29,7 @@ public interface BookingRepository extends JpaRepository<BookingModel, String>, 
                                                 @Param("checkoutDate") LocalDate checkoutDate);
 
     @Query("""
-                SELECT DISTINCT b.unit.unitId
+                SELECT b.unit.unitId
                 FROM BookingModel b
                 WHERE b.checkinDate < :checkoutDate
                   AND b.checkoutDate > :checkinDate
