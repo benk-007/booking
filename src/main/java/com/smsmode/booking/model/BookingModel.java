@@ -6,10 +6,10 @@ package com.smsmode.booking.model;
 
 import com.smsmode.booking.embeddable.GuestEmbeddable;
 import com.smsmode.booking.embeddable.UnitEmbeddable;
+import com.smsmode.booking.enumeration.BookingStatusEnum;
+import com.smsmode.booking.enumeration.BookingTypeEnum;
 import com.smsmode.booking.model.base.AbstractBaseModel;
-import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,5 +36,15 @@ public class BookingModel extends AbstractBaseModel {
     private UnitEmbeddable unit;
     @Embedded
     private GuestEmbeddable guest;
+
+    @Enumerated(EnumType.STRING)
+    private BookingStatusEnum status;
+
+    @Enumerated(EnumType.STRING)
+    private BookingTypeEnum type;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "PARENT_BOOKING_ID")
+    private BookingModel parentBooking;
 
 }

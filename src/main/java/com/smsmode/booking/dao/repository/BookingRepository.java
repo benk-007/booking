@@ -19,21 +19,27 @@ import java.util.List;
  */
 @Repository
 public interface BookingRepository extends JpaRepository<BookingModel, String>, JpaSpecificationExecutor<BookingModel> {
+
     @Query("""
-                SELECT DISTINCT b.unit.unitId 
-                FROM BookingModel b 
-                WHERE b.checkinDate < :checkoutDate 
+                SELECT b.unit.unitId
+                FROM BookingModel b
+                WHERE b.checkinDate < :checkoutDate
                   AND b.checkoutDate > :checkinDate
+                  AND b.status = 'CONFIRMED'
+                  AND b.type = 'SINGLE'
             """)
-    List<String> findStrictlyOverlappingUnitIds(@Param("checkinDate") LocalDate checkinDate,
-                                                @Param("checkoutDate") LocalDate checkoutDate);
+    List<String> findStrictlyBookedUnitIds(@Param("checkinDate") LocalDate checkinDate,
+                                           @Param("checkoutDate") LocalDate checkoutDate);
+
 
     @Query("""
                 SELECT DISTINCT b.unit.unitId 
                 FROM BookingModel b 
                 WHERE b.checkinDate <= :checkoutDate 
                   AND b.checkoutDate >= :checkinDate
+                  AND b.status = 'CONFIRMED'
+                  AND b.type = 'SINGLE'
             """)
-    List<String> findLooselyOverlappingUnitIds(@Param("checkinDate") LocalDate checkinDate,
-                                               @Param("checkoutDate") LocalDate checkoutDate);
+    List<String> findLooselyBookedUnitIds(@Param("checkinDate") LocalDate checkinDate,
+                                          @Param("checkoutDate") LocalDate checkoutDate);
 }
