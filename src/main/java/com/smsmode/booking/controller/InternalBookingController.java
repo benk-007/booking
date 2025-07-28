@@ -24,8 +24,8 @@ public interface InternalBookingController {
 
     @GetMapping("/booked-units")
     ResponseEntity<List<String>> getBookedUnits(
-            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
-            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate,
+            @RequestParam("checkinDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkinDate,
+            @RequestParam("checkoutDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkoutDate,
             @RequestParam(name = "strict", defaultValue = "false") boolean strict);
 
 
