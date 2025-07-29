@@ -75,6 +75,6 @@ public class BookingModel extends AbstractBaseModel {
     private Integer nights;
     private BigDecimal total;
 
-    @OneToMany(fetch = FetchType.LAZY)
-    private List<SupplementModel> supplements = new ArrayList<>();
+//    @OneToMany(fetch = FetchType.LAZY)
+//    private List<SupplementModel> supplements = new ArrayList<>();
 }
