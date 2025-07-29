@@ -11,11 +11,12 @@ import com.smsmode.booking.mapper.BookingMapper;
 import com.smsmode.booking.model.BookingModel;
 import com.smsmode.booking.model.SupplementModel;
 
-import com.smsmode.booking.resource.booking.BookingGetResource;
-import com.smsmode.booking.resource.booking.BookingItemGetResource;
-import com.smsmode.booking.resource.booking.BookingItemPostResource;
-import com.smsmode.booking.resource.booking.BookingPostResource;
-import com.smsmode.booking.resource.common.SupplementPostResource;
+import com.smsmode.booking.resource.booking.get.BookingGetResource;
+import com.smsmode.booking.resource.booking.get.BookingItemGetResource;
+import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
+import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.post.BookingPostResource;
+import com.smsmode.booking.resource.booking.post.SupplementPostResource;
 import com.smsmode.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -74,7 +75,9 @@ public class BookingServiceImpl implements BookingService {
     public ResponseEntity<BookingGetResource> addItem(String bookingId, BookingItemPostResource bookingItemPostResource) {
         log.debug("Adding item to booking: {}", bookingId);
 
-        BookingModel groupBooking = findGroupBooking(bookingId);
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
+        BookingModel groupBooking = booking.getType() == BookingTypeEnum.GROUP ?
+                booking : booking.getParentBooking();
         BookingModel existingItem = findExistingItem(groupBooking, bookingItemPostResource);
 
         if (existingItem != null) {
@@ -91,16 +94,16 @@ public class BookingServiceImpl implements BookingService {
     public ResponseEntity<BookingGetResource> retrieveById(String bookingId) {
         log.debug("Retrieving booking: {}", bookingId);
 
-        BookingModel groupBooking = findGroupBooking(bookingId);
-        List<BookingModel> singleBookings = findSingleBookings(groupBooking);
-        BookingGetResource response = buildBookingResponse(groupBooking, singleBookings);
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
 
-        return ResponseEntity.ok(response);
-    }
-
-    private BookingModel findGroupBooking(String bookingId) {
-        return bookingDaoService.findOneBy(
-                BookingSpecification.withIdEqual(bookingId).and(BookingSpecification.withType(BookingTypeEnum.GROUP)));
+        if (booking.getType() == BookingTypeEnum.GROUP) {
+            List<BookingModel> singleBookings = findSingleBookings(booking);
+            return ResponseEntity.ok(buildBookingResponse(booking, singleBookings));
+        } else {
+            BookingGetResource response = bookingMapper.modelToGetResource(booking);
+            response.setItems(List.of(bookingMapper.modelToItemGetResource(booking)));
+            return ResponseEntity.ok(response);
+        }
     }
 
     private List<BookingModel> findSingleBookings(BookingModel groupBooking) {
@@ -141,16 +144,26 @@ public class BookingServiceImpl implements BookingService {
         int finalQuantity = itemRequest.getQuantity();
 
         if (finalQuantity == 0) {
-            deleteItem(existingItem);
+            deleteItemAndCheckParent(existingItem);
         } else {
             updateItemQuantity(existingItem, itemRequest, finalQuantity);
         }
     }
 
-    private void deleteItem(BookingModel existingItem) {
+    private void deleteItemAndCheckParent(BookingModel existingItem) {
+        BookingModel groupBooking = existingItem.getParentBooking();
+
         supplementDaoService.deleteBy(SupplementSpecification.withBookingId(existingItem.getId()));
         bookingDaoService.delete(existingItem);
-        log.info("Deleted item completely");
+
+        // Check if this was the last item
+        List<BookingModel> remainingItems = findSingleBookings(groupBooking);
+        if (remainingItems.isEmpty()) {
+            bookingDaoService.delete(groupBooking);
+            log.info("Deleted last item and GROUP booking");
+        } else {
+            log.info("Deleted item, {} items remaining", remainingItems.size());
+        }
     }
 
     private void updateItemQuantity(BookingModel existingItem, BookingItemPostResource itemRequest, int finalQuantity) {
@@ -196,8 +209,8 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private boolean isSameOccupancy(BookingModel existing, BookingItemPostResource newItem) {
-        return existing.getAdults().equals(newItem.getAdults()) &&
-                isSameChildren(existing.getChildren(), newItem.getChildren());
+        return existing.getOccupancy().getAdults().equals(newItem.getOccupancy().getAdults()) &&
+                isSameChildren(existing.getOccupancy().getChildren(), newItem.getOccupancy().getChildren());
     }
 
     private boolean isSameRates(BookingModel existing, BookingItemPostResource newItem) {
@@ -233,6 +246,13 @@ public class BookingServiceImpl implements BookingService {
         List<SupplementModel> existingSupplements = supplementDaoService.findAllBy(
                 SupplementSpecification.withBookingId(bookingId));
 
+        if (CollectionUtils.isEmpty(newSupplements) && existingSupplements.isEmpty()) {
+            return true;
+        }
+        if (CollectionUtils.isEmpty(newSupplements) || existingSupplements.isEmpty()) {
+            return false;
+        }
+
         if (existingSupplements.size() != newSupplements.size()) {
             return false;
         }
@@ -267,8 +287,11 @@ public class BookingServiceImpl implements BookingService {
         singleBooking.setParty(groupBooking.getParty());
         singleBooking.setSegmentId(groupBooking.getSegmentId());
         singleBooking.setSubSegmentId(groupBooking.getSubSegmentId());
+        singleBooking.setOccupancy(item.getOccupancy());
 
-        BigDecimal accommodationTotal = item.getNightlyRate().multiply(BigDecimal.valueOf(item.getNights()));
+        BigDecimal accommodationTotal = item.getNightlyRate()
+                .multiply(BigDecimal.valueOf(item.getNights()))
+                .multiply(BigDecimal.valueOf(item.getQuantity()));
         BigDecimal supplementsTotal = calculateSupplementsTotal(item, item.getQuantity());
         singleBooking.setTotal(accommodationTotal.add(supplementsTotal));
 
@@ -303,6 +326,157 @@ public class BookingServiceImpl implements BookingService {
             supplement.setPrice(supplementPost.getPrice());
             supplement.setBookingId(bookingId);
             supplementDaoService.save(supplement);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<Void> deleteById(String bookingId) {
+        log.debug("Deleting booking: {}", bookingId);
+
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
+
+        if (booking.getType() == BookingTypeEnum.GROUP) {
+            deleteGroupBooking(booking);
+        } else {
+            deleteSingleBooking(booking);
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<BookingGetResource> updateBooking(String bookingId, BookingPatchResource bookingPatchResource) {
+        log.debug("Updating booking: {}", bookingId);
+
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
+
+        if (bookingPatchResource.getStatus() != null) {
+            return handleStatusConfirmation(booking, bookingPatchResource);
+        } else {
+            return handleBookingInfoUpdate(booking, bookingPatchResource);
+        }
+    }
+
+
+    private void deleteGroupBooking(BookingModel groupBooking) {
+        List<BookingModel> singleBookings = findSingleBookings(groupBooking);
+
+        for (BookingModel singleBooking : singleBookings) {
+            supplementDaoService.deleteBy(SupplementSpecification.withBookingId(singleBooking.getId()));
+            bookingDaoService.delete(singleBooking);
+        }
+
+        bookingDaoService.delete(groupBooking);
+        log.info("Deleted GROUP booking and {} items", singleBookings.size());
+    }
+
+    private void deleteSingleBooking(BookingModel singleBooking) {
+        BookingModel groupBooking = singleBooking.getParentBooking();
+
+        supplementDaoService.deleteBy(SupplementSpecification.withBookingId(singleBooking.getId()));
+        bookingDaoService.delete(singleBooking);
+
+        // Check if GROUP has any remaining items
+        List<BookingModel> remainingItems = findSingleBookings(groupBooking);
+        if (remainingItems.isEmpty()) {
+            bookingDaoService.delete(groupBooking);
+            log.info("Deleted last item and GROUP booking");
+        } else {
+            log.info("Deleted SINGLE booking, {} items remaining", remainingItems.size());
+        }
+    }
+
+    private ResponseEntity<BookingGetResource> handleStatusConfirmation(BookingModel booking, BookingPatchResource patchResource) {
+        if (patchResource.getStatus() == BookingStatusEnum.CONFIRMED) {
+            booking.setStatus(BookingStatusEnum.CONFIRMED);
+            bookingDaoService.save(booking);
+
+            List<BookingModel> singleBookings = findSingleBookings(booking);
+            for (BookingModel singleBooking : singleBookings) {
+                singleBooking.setStatus(BookingStatusEnum.CONFIRMED);
+                bookingDaoService.save(singleBooking);
+            }
+
+            // Apply GROUP -> SINGLE logic if only one item
+            if (singleBookings.size() == 1) {
+                BookingModel singleBooking = singleBookings.get(0);
+                singleBooking.setParentBooking(null);
+                singleBooking.setType(BookingTypeEnum.SINGLE);
+
+                // Copy GROUP fields to SINGLE
+                singleBooking.setGuestName(booking.getGuestName());
+                singleBooking.setPaymentMethod(booking.getPaymentMethod());
+                singleBooking.setGuaranteeAmount(booking.getGuaranteeAmount());
+                singleBooking.setSpecialNotes(booking.getSpecialNotes());
+
+                bookingDaoService.save(singleBooking);
+                bookingDaoService.delete(booking);
+
+                log.info("Converted GROUP to SINGLE booking");
+                return ResponseEntity.ok(bookingMapper.modelToGetResource(singleBooking));
+            }
+
+            log.info("Confirmed GROUP booking with {} items", singleBookings.size());
+        }
+
+        return retrieveById(booking.getId());
+    }
+
+    private ResponseEntity<BookingGetResource> handleBookingInfoUpdate(BookingModel booking, BookingPatchResource patchResource) {
+        boolean updated = false;
+
+        if (patchResource.getGuestName() != null) {
+            booking.setGuestName(patchResource.getGuestName());
+            updated = true;
+        }
+        if (patchResource.getPaymentMethod() != null) {
+            booking.setPaymentMethod(patchResource.getPaymentMethod());
+            updated = true;
+        }
+        if (patchResource.getGuaranteeAmount() != null) {
+            booking.setGuaranteeAmount(patchResource.getGuaranteeAmount());
+            updated = true;
+        }
+        if (patchResource.getSpecialNotes() != null) {
+            booking.setSpecialNotes(patchResource.getSpecialNotes());
+            updated = true;
+        }
+        if (patchResource.getNightlyRate() != null) {
+            booking.setNightlyRate(patchResource.getNightlyRate());
+            recalculateItemTotal(booking);
+            updated = true;
+        }
+        if (patchResource.getQuantity() != null) {
+            booking.setQuantity(patchResource.getQuantity());
+            recalculateItemTotal(booking);
+            updated = true;
+        }
+
+        if (updated) {
+            bookingDaoService.save(booking);
+            log.info("Updated booking information");
+        }
+
+        return retrieveById(booking.getId());
+    }
+
+    private void recalculateItemTotal(BookingModel booking) {
+        if (booking.getType() == BookingTypeEnum.SINGLE) {
+            BigDecimal accommodationTotal = booking.getNightlyRate()
+                    .multiply(BigDecimal.valueOf(booking.getNights()))
+                    .multiply(BigDecimal.valueOf(booking.getQuantity()));
+
+            List<SupplementModel> supplements = supplementDaoService.findAllBy(
+                    SupplementSpecification.withBookingId(booking.getId()));
+
+            BigDecimal supplementsTotal = supplements.stream()
+                    .map(s -> s.getPrice().multiply(BigDecimal.valueOf(booking.getNights()))
+                            .multiply(BigDecimal.valueOf(booking.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            booking.setTotal(accommodationTotal.add(supplementsTotal));
         }
     }
 }

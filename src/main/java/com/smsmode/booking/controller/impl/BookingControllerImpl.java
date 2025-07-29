@@ -2,9 +2,10 @@ package com.smsmode.booking.controller.impl;
 
 import com.smsmode.booking.controller.BookingController;
 
-import com.smsmode.booking.resource.booking.BookingGetResource;
-import com.smsmode.booking.resource.booking.BookingItemPostResource;
-import com.smsmode.booking.resource.booking.BookingPostResource;
+import com.smsmode.booking.resource.booking.get.BookingGetResource;
+import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
+import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import com.smsmode.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,5 +30,15 @@ public class BookingControllerImpl implements BookingController {
     @Override
     public ResponseEntity<BookingGetResource> getBookingById(String bookingId) {
         return bookingService.retrieveById(bookingId);
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteBooking(String bookingId) {
+        return bookingService.deleteById(bookingId);
+    }
+
+    @Override
+    public ResponseEntity<BookingGetResource> updateBooking(String bookingId, BookingPatchResource bookingPatchResource) {
+        return bookingService.updateBooking(bookingId, bookingPatchResource);
     }
 }

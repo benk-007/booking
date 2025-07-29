@@ -3,10 +3,10 @@ package com.smsmode.booking.mapper;
 import com.smsmode.booking.model.BookingModel;
 import com.smsmode.booking.model.base.AbstractBaseModel;
 
-import com.smsmode.booking.resource.booking.BookingGetResource;
-import com.smsmode.booking.resource.booking.BookingItemGetResource;
-import com.smsmode.booking.resource.booking.BookingItemPostResource;
-import com.smsmode.booking.resource.booking.BookingPostResource;
+import com.smsmode.booking.resource.booking.get.BookingGetResource;
+import com.smsmode.booking.resource.booking.get.BookingItemGetResource;
+import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import com.smsmode.booking.resource.common.AuditGetResource;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.*;

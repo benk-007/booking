@@ -5,10 +5,12 @@
 package com.smsmode.booking.model;
 
 import com.smsmode.booking.embeddable.ChildEmbeddable;
+import com.smsmode.booking.embeddable.OccupancyEmbeddable;
 import com.smsmode.booking.embeddable.PartyEmbeddable;
 import com.smsmode.booking.embeddable.UnitEmbeddable;
 import com.smsmode.booking.enumeration.BookingStatusEnum;
 import com.smsmode.booking.enumeration.BookingTypeEnum;
+import com.smsmode.booking.enumeration.PaymentMethodEnum;
 import com.smsmode.booking.model.base.AbstractBaseModel;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -40,6 +42,7 @@ public class BookingModel extends AbstractBaseModel {
     private UnitEmbeddable unit;
     @Embedded
     private PartyEmbeddable party;
+
     private String segmentId;
     private String subSegmentId;
 
@@ -53,12 +56,20 @@ public class BookingModel extends AbstractBaseModel {
     @JoinColumn(name = "PARENT_BOOKING_ID")
     private BookingModel parentBooking;
 
-    private Integer quantity;
-    private Integer adults;
+    private String guestName;
 
-    @ElementCollection
-    @CollectionTable(name = "X_BOOKING_CHILDREN", joinColumns = @JoinColumn(name = "BOOKING_ID"))
-    private List<ChildEmbeddable> children = new ArrayList<>();
+    @Enumerated(EnumType.STRING)
+    private PaymentMethodEnum paymentMethod;
+
+    private BigDecimal guaranteeAmount;
+
+    @Column(columnDefinition = "TEXT")
+    private String specialNotes;
+
+    private Integer quantity;
+
+    @Embedded
+    private OccupancyEmbeddable occupancy;
 
     private BigDecimal nightlyRate;
     private Integer nights;

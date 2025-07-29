@@ -4,9 +4,10 @@
  */
 package com.smsmode.booking.controller;
 
-import com.smsmode.booking.resource.booking.BookingGetResource;
-import com.smsmode.booking.resource.booking.BookingItemPostResource;
-import com.smsmode.booking.resource.booking.BookingPostResource;
+import com.smsmode.booking.resource.booking.get.BookingGetResource;
+import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
+import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,5 +31,13 @@ public interface BookingController {
 
     @GetMapping("/{bookingId}")
     ResponseEntity<BookingGetResource> getBookingById(@PathVariable("bookingId") String bookingId);
+
+    @DeleteMapping("/{bookingId}")
+    ResponseEntity<Void> deleteBooking(@PathVariable("bookingId") String bookingId);
+
+    @PatchMapping("/{bookingId}")
+    ResponseEntity<BookingGetResource> updateBooking(
+            @PathVariable("bookingId") String bookingId,
+            @RequestBody @Valid BookingPatchResource bookingPatchResource);
 }
 

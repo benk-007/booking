@@ -1,4 +1,4 @@
-package com.smsmode.booking.resource.common;
+package com.smsmode.booking.resource.booking.post;
 
 import lombok.Data;
 

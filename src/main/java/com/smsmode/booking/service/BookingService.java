@@ -1,9 +1,10 @@
 package com.smsmode.booking.service;
 
 
-import com.smsmode.booking.resource.booking.BookingGetResource;
-import com.smsmode.booking.resource.booking.BookingItemPostResource;
-import com.smsmode.booking.resource.booking.BookingPostResource;
+import com.smsmode.booking.resource.booking.get.BookingGetResource;
+import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
+import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
@@ -18,4 +19,8 @@ public interface BookingService {
     ResponseEntity<BookingGetResource> addItem(String bookingId, BookingItemPostResource bookingItemPostResource);
 
     ResponseEntity<BookingGetResource> retrieveById(String bookingId);
+
+    ResponseEntity<Void> deleteById(String bookingId);
+
+    ResponseEntity<BookingGetResource> updateBooking(String bookingId, BookingPatchResource bookingPatchResource);
 }

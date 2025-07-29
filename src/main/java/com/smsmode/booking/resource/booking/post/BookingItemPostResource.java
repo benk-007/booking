@@ -1,8 +1,8 @@
-package com.smsmode.booking.resource.booking;
+package com.smsmode.booking.resource.booking.post;
 
 import com.smsmode.booking.embeddable.ChildEmbeddable;
+import com.smsmode.booking.embeddable.OccupancyEmbeddable;
 import com.smsmode.booking.embeddable.UnitEmbeddable;
-import com.smsmode.booking.resource.common.SupplementPostResource;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,8 +13,7 @@ public class BookingItemPostResource {
     private UnitEmbeddable unit;
     private String checkinDate;
     private String checkoutDate;
-    private Integer adults;
-    private List<ChildEmbeddable> children;
+    private OccupancyEmbeddable occupancy;
     private Integer quantity;
     private BigDecimal nightlyRate;
     private Integer nights;
