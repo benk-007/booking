@@ -4,7 +4,12 @@
  */
 package com.smsmode.booking.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
+import com.smsmode.booking.resource.booking.BookingGetResource;
+import com.smsmode.booking.resource.booking.BookingItemPostResource;
+import com.smsmode.booking.resource.booking.BookingPostResource;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * TODO: add your documentation
@@ -15,5 +20,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 @RequestMapping("/bookings")
 public interface BookingController {
+    @PostMapping
+    ResponseEntity<BookingGetResource> createBooking(@RequestBody @Valid BookingPostResource bookingPostResource);
 
+    @PostMapping("/{bookingId}/items")
+    ResponseEntity<BookingGetResource> addItemToBooking(
+            @PathVariable("bookingId") String bookingId,
+            @RequestBody @Valid BookingItemPostResource bookingItemPostResource);
+
+    @GetMapping("/{bookingId}")
+    ResponseEntity<BookingGetResource> getBookingById(@PathVariable("bookingId") String bookingId);
 }
+
