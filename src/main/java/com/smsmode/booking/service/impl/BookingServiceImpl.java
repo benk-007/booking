@@ -110,11 +110,31 @@ public class BookingServiceImpl implements BookingService {
 
     private BookingGetResource buildBookingResponse(BookingModel groupBooking, List<BookingModel> singleBookings) {
         BookingGetResource response = bookingMapper.modelToGetResource(groupBooking);
-        List<BookingItemGetResource> itemResources = singleBookings.stream()
-                .map(bookingMapper::modelToItemGetResource)
-                .collect(Collectors.toList());
+        List<BookingItemGetResource> itemResources = new ArrayList<>();
+
+        for (BookingModel singleBooking : singleBookings) {
+            BookingItemGetResource itemResource = bookingMapper.modelToItemGetResource(singleBooking);
+
+            List<SupplementModel> supplements = supplementDaoService.findAllBy(
+                    SupplementSpecification.withBookingId(singleBooking.getId()));
+            List<SupplementPostResource> supplementResources = supplements.stream()
+                    .map(this::mapSupplementToResource)
+                    .collect(Collectors.toList());
+            itemResource.setSupplements(supplementResources);
+
+            itemResources.add(itemResource);
+        }
+
         response.setItems(itemResources);
         return response;
+    }
+
+    private SupplementPostResource mapSupplementToResource(SupplementModel supplement) {
+        SupplementPostResource resource = new SupplementPostResource();
+        resource.setLabel(supplement.getLabel());
+        resource.setDescription(supplement.getDescription());
+        resource.setPrice(supplement.getPrice());
+        return resource;
     }
 
     private void handleExistingItem(BookingModel existingItem, BookingItemPostResource itemRequest) {

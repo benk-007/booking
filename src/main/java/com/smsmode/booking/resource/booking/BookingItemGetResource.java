@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class BookingItemGetResource {
+public class  BookingItemGetResource {
     private String id;
     private LocalDate checkinDate;
     private LocalDate checkoutDate;
