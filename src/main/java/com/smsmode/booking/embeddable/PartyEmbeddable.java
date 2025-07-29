@@ -11,6 +11,7 @@ import lombok.Data;
 public class PartyEmbeddable {
     @Column(name = "PARTY_ID")
     private String id;
+    @Column(name = "PARTY_NAME")
     private String name;
 
 

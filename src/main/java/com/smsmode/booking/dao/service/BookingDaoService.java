@@ -14,4 +14,6 @@ public interface BookingDaoService {
     BookingModel findOneBy(Specification<BookingModel> specification);
 
     List<BookingModel> findAllBy(Specification<BookingModel> specification);
+
+    void delete(BookingModel bookingModel);
 }

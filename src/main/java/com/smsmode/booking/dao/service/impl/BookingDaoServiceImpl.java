@@ -49,4 +49,9 @@ public class BookingDaoServiceImpl implements BookingDaoService {
     public List<BookingModel> findAllBy(Specification<BookingModel> specification) {
         return bookingRepository.findAll(specification);
     }
+
+    @Override
+    public void delete(BookingModel bookingModel) {
+        bookingRepository.delete(bookingModel);
+    }
 }

@@ -5,7 +5,6 @@
 package com.smsmode.booking.model;
 
 import com.smsmode.booking.embeddable.ChildEmbeddable;
-import com.smsmode.booking.embeddable.GuestEmbeddable;
 import com.smsmode.booking.embeddable.PartyEmbeddable;
 import com.smsmode.booking.embeddable.UnitEmbeddable;
 import com.smsmode.booking.enumeration.BookingStatusEnum;
@@ -54,15 +53,17 @@ public class BookingModel extends AbstractBaseModel {
     @JoinColumn(name = "PARENT_BOOKING_ID")
     private BookingModel parentBooking;
 
-    @ElementCollection
-    @CollectionTable(name = "X_BOOKING_CHILDREN", joinColumns = @JoinColumn(name = "BOOKING_ID"))
-    private List<ChildEmbeddable> children = new ArrayList<>(); // Changer de Integer vers List<ChildEmbeddable>
-
-
-    // Fields for SINGLE bookings only
     private Integer quantity;
     private Integer adults;
+
+    @ElementCollection
+    @CollectionTable(name = "X_BOOKING_CHILDREN", joinColumns = @JoinColumn(name = "BOOKING_ID"))
+    private List<ChildEmbeddable> children = new ArrayList<>();
+
     private BigDecimal nightlyRate;
     private Integer nights;
     private BigDecimal total;
+
+    @OneToMany(fetch = FetchType.LAZY)
+    private List<SupplementModel> supplements = new ArrayList<>();
 }

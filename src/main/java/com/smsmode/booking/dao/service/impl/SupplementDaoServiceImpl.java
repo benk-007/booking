@@ -4,13 +4,18 @@ import com.smsmode.booking.dao.repository.SupplementRepository;
 import com.smsmode.booking.dao.service.SupplementDaoService;
 import com.smsmode.booking.model.SupplementModel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SupplementDaoServiceImpl implements SupplementDaoService {
+
     private final SupplementRepository supplementRepository;
 
     @Override
@@ -19,7 +24,14 @@ public class SupplementDaoServiceImpl implements SupplementDaoService {
     }
 
     @Override
-    public List<SupplementModel> findByBookingId(String bookingId) {
-        return supplementRepository.findByBookingId(bookingId);
+    public List<SupplementModel> findAllBy(Specification<SupplementModel> specification) {
+        return supplementRepository.findAll(specification);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBy(Specification<SupplementModel> specification) {
+        List<SupplementModel> supplements = supplementRepository.findAll(specification);
+        supplementRepository.deleteAll(supplements);
     }
 }
