@@ -7,10 +7,11 @@ import com.smsmode.booking.dao.specification.SupplementSpecification;
 import com.smsmode.booking.embeddable.ChildEmbeddable;
 import com.smsmode.booking.enumeration.BookingStatusEnum;
 import com.smsmode.booking.enumeration.BookingTypeEnum;
+import com.smsmode.booking.exception.ConflictException;
+import com.smsmode.booking.exception.enumeration.ConflictExceptionTitleEnum;
 import com.smsmode.booking.mapper.BookingMapper;
 import com.smsmode.booking.model.BookingModel;
 import com.smsmode.booking.model.SupplementModel;
-
 import com.smsmode.booking.resource.booking.get.BookingGetResource;
 import com.smsmode.booking.resource.booking.get.BookingItemGetResource;
 import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
@@ -106,6 +107,38 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    @Override
+    @Transactional
+    public ResponseEntity<Void> deleteById(String bookingId) {
+        log.debug("Deleting booking: {}", bookingId);
+
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
+
+        if (booking.getType() == BookingTypeEnum.GROUP) {
+            log.debug("Deleting GROUP booking and all its items");
+            deleteGroupBooking(booking);
+        } else {
+            log.debug("Deleting SINGLE booking item");
+            deleteSingleBooking(booking);
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @Transactional
+    public ResponseEntity<BookingGetResource> updateBooking(String bookingId, BookingPatchResource bookingPatchResource) {
+        log.debug("Updating booking: {}", bookingId);
+
+        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
+
+        if (bookingPatchResource.getStatus() != null) {
+            return handleStatusConfirmation(booking, bookingPatchResource);
+        } else {
+            return handleBookingInfoUpdate(booking, bookingPatchResource);
+        }
+    }
+
     private List<BookingModel> findSingleBookings(BookingModel groupBooking) {
         return bookingDaoService.findAllBy(
                 BookingSpecification.withParentBooking(groupBooking).and(BookingSpecification.withType(BookingTypeEnum.SINGLE)));
@@ -120,10 +153,7 @@ public class BookingServiceImpl implements BookingService {
 
             List<SupplementModel> supplements = supplementDaoService.findAllBy(
                     SupplementSpecification.withBookingId(singleBooking.getId()));
-            List<SupplementPostResource> supplementResources = supplements.stream()
-                    .map(this::mapSupplementToResource)
-                    .collect(Collectors.toList());
-            itemResource.setSupplements(supplementResources);
+            itemResource.setSupplements(bookingMapper.supplementModelsToPostResources(supplements));
 
             itemResources.add(itemResource);
         }
@@ -132,20 +162,14 @@ public class BookingServiceImpl implements BookingService {
         return response;
     }
 
-    private SupplementPostResource mapSupplementToResource(SupplementModel supplement) {
-        SupplementPostResource resource = new SupplementPostResource();
-        resource.setLabel(supplement.getLabel());
-        resource.setDescription(supplement.getDescription());
-        resource.setPrice(supplement.getPrice());
-        return resource;
-    }
-
     private void handleExistingItem(BookingModel existingItem, BookingItemPostResource itemRequest) {
         int finalQuantity = itemRequest.getQuantity();
 
         if (finalQuantity == 0) {
+            log.debug("Quantity is 0, deleting item: {}", existingItem.getId());
             deleteItemAndCheckParent(existingItem);
         } else {
+            log.debug("Updating item quantity to: {}", finalQuantity);
             updateItemQuantity(existingItem, itemRequest, finalQuantity);
         }
     }
@@ -320,45 +344,11 @@ public class BookingServiceImpl implements BookingService {
         }
 
         for (SupplementPostResource supplementPost : supplements) {
-            SupplementModel supplement = new SupplementModel();
-            supplement.setLabel(supplementPost.getLabel());
-            supplement.setDescription(supplementPost.getDescription());
-            supplement.setPrice(supplementPost.getPrice());
+            SupplementModel supplement = bookingMapper.supplementPostResourceToModel(supplementPost);
             supplement.setBookingId(bookingId);
             supplementDaoService.save(supplement);
         }
     }
-
-    @Override
-    @Transactional
-    public ResponseEntity<Void> deleteById(String bookingId) {
-        log.debug("Deleting booking: {}", bookingId);
-
-        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
-
-        if (booking.getType() == BookingTypeEnum.GROUP) {
-            deleteGroupBooking(booking);
-        } else {
-            deleteSingleBooking(booking);
-        }
-
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
-    @Transactional
-    public ResponseEntity<BookingGetResource> updateBooking(String bookingId, BookingPatchResource bookingPatchResource) {
-        log.debug("Updating booking: {}", bookingId);
-
-        BookingModel booking = bookingDaoService.findOneBy(BookingSpecification.withIdEqual(bookingId));
-
-        if (bookingPatchResource.getStatus() != null) {
-            return handleStatusConfirmation(booking, bookingPatchResource);
-        } else {
-            return handleBookingInfoUpdate(booking, bookingPatchResource);
-        }
-    }
-
 
     private void deleteGroupBooking(BookingModel groupBooking) {
         List<BookingModel> singleBookings = findSingleBookings(groupBooking);
@@ -390,6 +380,9 @@ public class BookingServiceImpl implements BookingService {
 
     private ResponseEntity<BookingGetResource> handleStatusConfirmation(BookingModel booking, BookingPatchResource patchResource) {
         if (patchResource.getStatus() == BookingStatusEnum.CONFIRMED) {
+            log.debug("Validating availability before confirmation for booking: {}", booking.getId());
+            validateBookingAvailability(booking);
+
             booking.setStatus(BookingStatusEnum.CONFIRMED);
             bookingDaoService.save(booking);
 
@@ -399,7 +392,7 @@ public class BookingServiceImpl implements BookingService {
                 bookingDaoService.save(singleBooking);
             }
 
-            // Apply GROUP -> SINGLE logic if only one item
+            // Apply GROUP → SINGLE logic if only one item
             if (singleBookings.size() == 1) {
                 BookingModel singleBooking = singleBookings.get(0);
                 singleBooking.setParentBooking(null);
@@ -414,8 +407,10 @@ public class BookingServiceImpl implements BookingService {
                 bookingDaoService.save(singleBooking);
                 bookingDaoService.delete(booking);
 
-                log.info("Converted GROUP to SINGLE booking");
-                return ResponseEntity.ok(bookingMapper.modelToGetResource(singleBooking));
+                log.info("Converted GROUP to SINGLE booking after confirmation");
+                BookingGetResource response = bookingMapper.modelToGetResource(singleBooking);
+                response.setItems(List.of(bookingMapper.modelToItemGetResource(singleBooking)));
+                return ResponseEntity.ok(response);
             }
 
             log.info("Confirmed GROUP booking with {} items", singleBookings.size());
@@ -479,7 +474,55 @@ public class BookingServiceImpl implements BookingService {
             booking.setTotal(accommodationTotal.add(supplementsTotal));
         }
     }
+
+    /**
+     * Validates availability of units in a booking before confirmation.
+     * Checks if any units are already booked by other CONFIRMED bookings in the same period.
+     *
+     * @param booking The booking to validate
+     * @throws ConflictException if any units are not available
+     */
+    private void validateBookingAvailability(BookingModel booking) {
+        log.debug("Validating availability for booking: {}", booking.getId());
+
+        List<BookingModel> singleBookings = findSingleBookings(booking);
+
+        for (BookingModel singleBooking : singleBookings) {
+            if (isUnitNotAvailable(singleBooking)) {
+                log.warn("Unit {} is not available for period {} to {}",
+                        singleBooking.getUnit().getUnitId(),
+                        singleBooking.getCheckinDate(),
+                        singleBooking.getCheckoutDate());
+
+                throw new ConflictException(
+                        ConflictExceptionTitleEnum.UNIT_NOT_AVAILABLE,
+                        String.format("Unit %s is not available for the selected period",
+                                singleBooking.getUnit().getUnitName())
+                );
+            }
+        }
+
+        log.debug("All units are available for booking: {}", booking.getId());
+    }
+
+    /**
+     * Checks if a unit is NOT available for the given booking item.
+     * Excludes the current booking from availability check.
+     *
+     * @param singleBooking The booking item to check
+     * @return true if unit is NOT available (conflict exists)
+     */
+    private boolean isUnitNotAvailable(BookingModel singleBooking) {
+        String parentBookingId = singleBooking.getParentBooking() != null ?
+                singleBooking.getParentBooking().getId() : singleBooking.getId();
+
+        List<String> bookedUnits = bookingDaoService.findBookedUnitIdsExcludingBooking(
+                singleBooking.getCheckinDate(),
+                singleBooking.getCheckoutDate(),
+                true, // strict mode
+                parentBookingId
+        );
+
+        return bookedUnits.contains(singleBooking.getUnit().getUnitId());
+    }
 }
-
-
-

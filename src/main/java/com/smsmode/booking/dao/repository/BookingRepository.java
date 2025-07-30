@@ -31,6 +31,20 @@ public interface BookingRepository extends JpaRepository<BookingModel, String>, 
     List<String> findStrictlyBookedUnitIds(@Param("checkinDate") LocalDate checkinDate,
                                            @Param("checkoutDate") LocalDate checkoutDate);
 
+    @Query("""
+                SELECT b.unit.unitId
+                FROM BookingModel b
+                WHERE b.checkinDate < :checkoutDate
+                  AND b.checkoutDate > :checkinDate
+                  AND b.status = 'CONFIRMED'
+                  AND b.type = 'SINGLE'
+                  AND (b.parentBooking.id != :excludeBookingId OR b.parentBooking IS NULL)
+                  AND b.id != :excludeBookingId
+            """)
+    List<String> findStrictlyBookedUnitIdsExcludingBooking(@Param("checkinDate") LocalDate checkinDate,
+                                                           @Param("checkoutDate") LocalDate checkoutDate,
+                                                           @Param("excludeBookingId") String excludeBookingId);
+
 
     @Query("""
                 SELECT DISTINCT b.unit.unitId 
@@ -42,4 +56,19 @@ public interface BookingRepository extends JpaRepository<BookingModel, String>, 
             """)
     List<String> findLooselyBookedUnitIds(@Param("checkinDate") LocalDate checkinDate,
                                           @Param("checkoutDate") LocalDate checkoutDate);
+
+
+    @Query("""
+                SELECT DISTINCT b.unit.unitId 
+                FROM BookingModel b 
+                WHERE b.checkinDate <= :checkoutDate 
+                  AND b.checkoutDate >= :checkinDate
+                  AND b.status = 'CONFIRMED'
+                  AND b.type = 'SINGLE'
+                  AND (b.parentBooking.id != :excludeBookingId OR b.parentBooking IS NULL)
+                  AND b.id != :excludeBookingId
+            """)
+    List<String> findLooselyBookedUnitIdsExcludingBooking(@Param("checkinDate") LocalDate checkinDate,
+                                                          @Param("checkoutDate") LocalDate checkoutDate,
+                                                          @Param("excludeBookingId") String excludeBookingId);
 }

@@ -30,6 +30,18 @@ public class BookingDaoServiceImpl implements BookingDaoService {
     }
 
     @Override
+    public List<String> findBookedUnitIdsExcludingBooking(LocalDate checkinDate, LocalDate checkoutDate,
+                                                          boolean strict, String excludeBookingId) {
+        if (strict) {
+            return bookingRepository.findStrictlyBookedUnitIdsExcludingBooking(
+                    checkinDate, checkoutDate, excludeBookingId);
+        } else {
+            return bookingRepository.findLooselyBookedUnitIdsExcludingBooking(
+                    checkinDate, checkoutDate, excludeBookingId);
+        }
+    }
+
+    @Override
     public BookingModel save(BookingModel bookingModel) {
         return bookingRepository.save(bookingModel);
     }
@@ -40,7 +52,7 @@ public class BookingDaoServiceImpl implements BookingDaoService {
                 () -> {
                     log.debug("Couldn't find any booking with the specified criteria");
                     return new ResourceNotFoundException(
-                            ResourceNotFoundExceptionTitleEnum.GUEST_NOT_FOUND,
+                            ResourceNotFoundExceptionTitleEnum.BOOKING_NOT_FOUND,
                             "No booking found with the specified criteria");
                 });
     }

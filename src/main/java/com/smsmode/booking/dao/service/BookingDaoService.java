@@ -9,6 +9,9 @@ import java.util.List;
 public interface BookingDaoService {
     List<String> findBookedUnitIds(LocalDate checkinDate, LocalDate checkoutDate, boolean strict);
 
+    List<String> findBookedUnitIdsExcludingBooking(LocalDate checkinDate, LocalDate checkoutDate,
+                                                   boolean strict, String excludeBookingId);
+
     BookingModel save(BookingModel bookingModel);
 
     BookingModel findOneBy(Specification<BookingModel> specification);

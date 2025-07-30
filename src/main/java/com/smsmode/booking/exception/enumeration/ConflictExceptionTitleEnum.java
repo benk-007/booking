@@ -13,7 +13,9 @@ package com.smsmode.booking.exception.enumeration;
  * <p>Created 13 Mar 2025
  */
 public enum ConflictExceptionTitleEnum implements BaseExceptionEnum {
-    PASSWORD_MISMATCH("UAA_CFT_ERR_1");
+    PASSWORD_MISMATCH("UAA_CFT_ERR_1"),
+    UNIT_NOT_AVAILABLE("BKG_CFT_ERR_1");
+
     private final String code;
 
     /**

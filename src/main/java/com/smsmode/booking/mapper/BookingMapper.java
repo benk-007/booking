@@ -1,17 +1,20 @@
 package com.smsmode.booking.mapper;
 
 import com.smsmode.booking.model.BookingModel;
+import com.smsmode.booking.model.SupplementModel;
 import com.smsmode.booking.model.base.AbstractBaseModel;
 
 import com.smsmode.booking.resource.booking.get.BookingGetResource;
 import com.smsmode.booking.resource.booking.get.BookingItemGetResource;
 import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
 import com.smsmode.booking.resource.booking.post.BookingPostResource;
+import com.smsmode.booking.resource.booking.post.SupplementPostResource;
 import com.smsmode.booking.resource.common.AuditGetResource;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.*;
 
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Mapper for BookingModel and resources
@@ -44,6 +47,19 @@ public abstract class BookingMapper {
     public abstract BookingModel itemPostResourceToModel(BookingItemPostResource bookingItemPostResource);
 
     public abstract AuditGetResource modelToAuditResource(AbstractBaseModel baseModel);
+
+
+    public abstract SupplementPostResource supplementModelToPostResource(SupplementModel supplementModel);
+
+    public abstract List<SupplementPostResource> supplementModelsToPostResources(List<SupplementModel> supplementModels);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "modifiedAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
+    @Mapping(target = "modifiedBy", ignore = true)
+    public abstract SupplementModel supplementPostResourceToModel(SupplementPostResource supplementPostResource);
+
 
     @Named("stringToLocalDate")
     protected java.time.LocalDate stringToLocalDate(String dateString) {
