@@ -9,6 +9,8 @@ import com.smsmode.booking.resource.booking.patch.BookingPatchResource;
 import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
 import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +33,9 @@ public interface BookingController {
 
     @GetMapping("/{bookingId}")
     ResponseEntity<BookingGetResource> getBookingById(@PathVariable("bookingId") String bookingId);
+
+    @GetMapping("/drafts")
+    ResponseEntity<Page<BookingGetResource>> getDraftGroupBookings(Pageable pageable);
 
     @DeleteMapping("/{bookingId}")
     ResponseEntity<Void> deleteBooking(@PathVariable("bookingId") String bookingId);

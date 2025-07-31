@@ -8,6 +8,8 @@ import com.smsmode.booking.resource.booking.post.BookingItemPostResource;
 import com.smsmode.booking.resource.booking.post.BookingPostResource;
 import com.smsmode.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,6 +32,11 @@ public class BookingControllerImpl implements BookingController {
     @Override
     public ResponseEntity<BookingGetResource> getBookingById(String bookingId) {
         return bookingService.retrieveById(bookingId);
+    }
+
+    @Override
+    public ResponseEntity<Page<BookingGetResource>> getDraftGroupBookings(Pageable pageable) {
+        return bookingService.retrieveDraftGroupBookings(pageable);
     }
 
     @Override

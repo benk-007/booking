@@ -21,6 +21,9 @@ import com.smsmode.booking.resource.booking.post.SupplementPostResource;
 import com.smsmode.booking.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,6 +108,26 @@ public class BookingServiceImpl implements BookingService {
             response.setItems(List.of(bookingMapper.modelToItemGetResource(booking)));
             return ResponseEntity.ok(response);
         }
+    }
+
+
+    @Override
+    public ResponseEntity<Page<BookingGetResource>> retrieveDraftGroupBookings(Pageable pageable) {
+        log.debug("Retrieving draft GROUP bookings with pagination");
+
+        Specification<BookingModel> specification = Specification.where(
+                BookingSpecification.withStatus(BookingStatusEnum.DRAFT)
+                        .and(BookingSpecification.withType(BookingTypeEnum.GROUP))
+        );
+
+        Page<BookingModel> bookingsPage = bookingDaoService.findAllBy(specification, pageable);
+        Page<BookingGetResource> responsePage = bookingsPage.map(booking -> {
+            List<BookingModel> singleBookings = findSingleBookings(booking);
+            return buildBookingResponse(booking, singleBookings);
+        });
+
+        log.info("Retrieved {} draft GROUP bookings", responsePage.getTotalElements());
+        return ResponseEntity.ok(responsePage);
     }
 
     @Override
@@ -438,14 +461,24 @@ public class BookingServiceImpl implements BookingService {
             booking.setSpecialNotes(patchResource.getSpecialNotes());
             updated = true;
         }
+        if (patchResource.getEmail() != null || patchResource.getMobile() != null) {
+            if (booking.getParty() != null && booking.getParty().getContact() != null) {
+                if (patchResource.getEmail() != null) {
+                    booking.getParty().getContact().setEmail(patchResource.getEmail());
+                }
+                if (patchResource.getMobile() != null) {
+                    booking.getParty().getContact().setMobile(patchResource.getMobile());
+                }
+                updated = true;
+            }
+        }
         if (patchResource.getNightlyRate() != null) {
             booking.setNightlyRate(patchResource.getNightlyRate());
             recalculateItemTotal(booking);
             updated = true;
         }
-        if (patchResource.getQuantity() != null) {
-            booking.setQuantity(patchResource.getQuantity());
-            recalculateItemTotal(booking);
+        if (patchResource.getSupplements() != null) {
+            updateBookingSupplements(booking, patchResource.getSupplements());
             updated = true;
         }
 
@@ -456,6 +489,22 @@ public class BookingServiceImpl implements BookingService {
 
         return retrieveById(booking.getId());
     }
+
+    private void updateBookingSupplements(BookingModel booking, List<SupplementPostResource> newSupplements) {
+        if (booking.getType() == BookingTypeEnum.SINGLE) {
+            supplementDaoService.deleteBy(SupplementSpecification.withBookingId(booking.getId()));
+
+            for (SupplementPostResource supplementPost : newSupplements) {
+                SupplementModel supplement = bookingMapper.supplementPostResourceToModel(supplementPost);
+                supplement.setBookingId(booking.getId());
+                supplementDaoService.save(supplement);
+            }
+
+            recalculateItemTotal(booking);
+            log.debug("Updated supplements for booking: {}", booking.getId());
+        }
+    }
+
 
     private void recalculateItemTotal(BookingModel booking) {
         if (booking.getType() == BookingTypeEnum.SINGLE) {
