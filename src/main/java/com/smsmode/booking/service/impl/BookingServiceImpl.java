@@ -85,7 +85,19 @@ public class BookingServiceImpl implements BookingService {
         BookingModel existingItem = findExistingItem(groupBooking, bookingItemPostResource);
 
         if (existingItem != null) {
-            handleExistingItem(existingItem, bookingItemPostResource);
+            if (bookingItemPostResource.getQuantity() == 0) {
+                List<BookingModel> remainingItems = findSingleBookings(groupBooking);
+                boolean isLastItem = remainingItems.size() == 1;
+
+                handleExistingItem(existingItem, bookingItemPostResource);
+
+                if (isLastItem) {
+                    log.info("Last item deleted, GROUP booking also deleted");
+                    return ResponseEntity.noContent().build();
+                }
+            } else {
+                handleExistingItem(existingItem, bookingItemPostResource);
+            }
         } else {
             createSingleBooking(bookingItemPostResource, groupBooking);
             log.info("Created new item");
